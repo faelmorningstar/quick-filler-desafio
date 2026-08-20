@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quick Filler</title>
+  <style>
+    :root{font-family:Inter,Arial,sans-serif;color:#17223b;background:#f3f6fb}*{box-sizing:border-box}
+    body{margin:0}header{background:#173772;color:white;padding:18px 28px}main{padding:22px;max-width:1500px;margin:auto}
+    .upload,.panel{background:white;border:1px solid #d9e1ef;border-radius:10px;padding:16px;box-shadow:0 4px 18px #17377212}
+    button,select,input{padding:10px;border-radius:6px;border:1px solid #aebbd0}button{background:#173772;color:white;cursor:pointer}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.hidden{display:none}iframe{width:100%;height:72vh;border:0}
+    textarea{width:100%;height:60vh;font-family:monospace;font-size:13px;border:1px solid #aebbd0;border-radius:6px;padding:10px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.status{margin-left:10px;font-weight:600}.warning{color:#7a5700}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}iframe{height:55vh}}
+  </style>
+</head>
+<body><header><strong>Quick Filler</strong> - revisão de transcrições</header><main>
+  <section class="upload"><form id="form"><input type="file" name="arquivo" accept="application/pdf" required>
+    <select name="tipo"><option value="cartao-ponto">Cartão de ponto</option><option value="holerite">Holerite</option></select>
+    <button>Processar PDF</button><span id="status" class="status"></span></form></section>
+  <section id="workspace" class="grid hidden"><div class="panel"><h2>Documento</h2><iframe id="pdf"></iframe></div>
+    <div class="panel"><h2>Transcrição editável</h2><p class="warning">Use <code>?</code> quando um caractere não puder ser confirmado.</p>
+      <textarea id="editor" spellcheck="false"></textarea><div class="actions"><button id="save">Salvar correções</button>
+      <button data-format="xlsx">Baixar XLSX</button><button data-format="csv">Baixar CSV</button><button data-format="json">Baixar JSON</button></div></div></section>
+<script>
+let id=null;const status=document.querySelector('#status'), editor=document.querySelector('#editor');
+document.querySelector('#form').addEventListener('submit',async e=>{e.preventDefault();status.textContent='Enviando...';
+ const response=await fetch('/api/transcricoes',{method:'POST',body:new FormData(e.target)});if(!response.ok){status.textContent=await response.text();return}
+ id=(await response.json()).id;status.textContent='Processando...';poll();});
+async function poll(){const data=await (await fetch(`/api/transcricoes/${id}`)).json();status.textContent=data.status;
+ if(data.status==='processando'){setTimeout(poll,1000);return}if(data.status==='erro'){status.textContent=data.erro;return}
+ editor.value=JSON.stringify(data.value,null,2);document.querySelector('#pdf').src=`/api/transcricoes/${id}/pdf`;
+ document.querySelector('#workspace').classList.remove('hidden');}
+document.querySelector('#save').addEventListener('click',async()=>{try{const value=JSON.parse(editor.value);const response=await fetch(`/api/transcricoes/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value})});if(!response.ok)throw Error(await response.text());status.textContent='Correções salvas';}catch(error){status.textContent='JSON inválido: '+error.message;}});
+document.querySelectorAll('[data-format]').forEach(button=>button.addEventListener('click',()=>{window.location=`/api/transcricoes/${id}/planilha?formato=${button.dataset.format}`}));
+</script></main></body></html>
