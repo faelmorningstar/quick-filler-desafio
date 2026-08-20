@@ -23,6 +23,9 @@ docker compose up --build
 ```
 
 Depois, abra `http://localhost:8000`.
+## Demonstração
+
+Aplicação publicada: https://quick-filler-desafio-aua5.onrender.com
 
 Detalhes técnicos, limitações e política de retenção estão em
 [`SOLUCAO.md`](SOLUCAO.md). O registro do desenvolvimento assistido por IA está
