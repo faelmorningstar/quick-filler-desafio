@@ -2,6 +2,10 @@
 
 Aplicação web para transcrição revisável de cartões de ponto e holerites.
 
+## Demonstração
+
+Aplicação publicada: https://quick-filler-desafio-aua5.onrender.com
+
 A interface e os cabeçalhos das planilhas usam português-BR. O JSON e a API
 mantêm as chaves literais em inglês exigidas pelo contrato do desafio.
 
