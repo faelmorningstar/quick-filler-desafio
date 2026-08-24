@@ -363,6 +363,31 @@ def _punches(times: list[str]) -> list[dict]:
                        "time_raw": raw, "time_hhmm": normalized})
     return result
 
+def _order_time_words(
+    time_words: list[tuple[float, str]],
+    first_interval_x: float,
+) -> list[str]:
+    """Coloca a saída final depois dos horários de intervalo."""
+
+    ordered = sorted(time_words, key=lambda item: item[0])
+
+    main_column_times = [
+        value for x0, value in ordered
+        if x0 < first_interval_x
+    ]
+    interval_times = [
+        value for x0, value in ordered
+        if x0 >= first_interval_x
+    ]
+
+    if len(main_column_times) >= 2:
+        return [
+            main_column_times[0],
+            *interval_times,
+            *main_column_times[1:],
+        ]
+
+    return [value for _, value in ordered]
 
 def parse_timecard(path: str | Path) -> dict:
     pages: list[dict] = []
@@ -379,6 +404,16 @@ def parse_timecard(path: str | Path) -> dict:
                 if w.x0 > data_left and any(marker in w.text.lower() for marker in ("ocorr", "qtde", "h.ext", "atraso"))
             ]
             data_right = min(stops) if stops else page.rect.width * 0.82
+            interval_starts = [
+                word.x0
+                for word in header_words
+                if "intervalo" in word.text.lower()
+            ]
+            first_interval_x = (
+                (min(starts) + min(interval_starts)) / 2
+                if starts and interval_starts
+                else data_left + (data_right - data_left) * 0.25
+)
             days: list[dict] = []
             current: dict | None = None
             current_y: float | None = None
@@ -389,11 +424,15 @@ def parse_timecard(path: str | Path) -> dict:
                 has_weekday = bool(re.search(r"\b(?:DOM|SEG|TER|QUA|QUI|SEX|SAB)\b", text, re.I))
                 date_raw = full.group(1) if full and has_weekday else (day_week.group(1) if day_week else None)
                 row_y = min(word.y0 for word in row)
-                times = []
+
+                time_words: list[tuple[float, str]] = []
                 for word in row:
                     if not (data_left <= word.x0 <= data_right):
                         continue
-                    times.extend(match.group(1) for match in TIME_RE.finditer(word.text))
+                    for match in TIME_RE.finditer(word.text):
+                        time_words.append((word.x0, match.group(1)))
+
+                times = _order_time_words(time_words, first_interval_x)
                 if date_raw is not None:
                     current = {"date_raw": date_raw, "punches": _punches(times)}
                     days.append(current)
