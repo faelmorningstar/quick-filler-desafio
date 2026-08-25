@@ -7,7 +7,7 @@ Esta matriz registra o comportamento observado da versão de portfólio do Quick
 | `payroll-01.pdf` | Ficha financeira | 21.390 caracteres | Não suportado no fluxo mensal | Formato acumulado; funcionalidade bônus |
 | `payroll-02.pdf` | Holerite | 7.735 caracteres | Testado | Teste real para seções `MÊS` e `ACERTO` |
 | `payroll-03.pdf` | Holerite | 4.970 caracteres | Testado | Competência, verbas e bases validadas |
-| `payroll-04.pdf` | Holerite | 425 caracteres | Não confiável | Texto insuficiente; avaliar OCR |
+| `payroll-04.pdf` | Holerite | 425 caracteres | Parcial com OCR | Competência e totais testados no Docker; verbas ainda não estruturadas |
 | `time-card-01.pdf` | Cartão de ponto | 22.589 caracteres | Testado | Páginas e dias extraídos |
 | `time-card-02.pdf` | Cartão de ponto | 0 caracteres | Parcial com OCR | OCR executa; avisos de confiabilidade e revisão manual |
 | `time-card-03.pdf` | Cartão de ponto | 0 caracteres | Não avaliado | Exige OCR e teste com referência visual |

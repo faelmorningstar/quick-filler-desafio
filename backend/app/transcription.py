@@ -122,11 +122,43 @@ def _competence(rows: list[list[Word]]) -> tuple[str, str]:
         r"(0?[1-9]|1[0-2])\s*[/.-]\s*((?:19|20)\d{2})",
         re.IGNORECASE,
     )
+
+    named_month = re.compile(
+        r"\b("
+        r"janeiro|fevereiro|mar[cç]o|abril|maio|junho|"
+        r"julho|agosto|setembro|outubro|novembro|dezembro"
+        r")\s*/\s*((?:19|20)\d{2})",
+        re.IGNORECASE,
+    )
+
+    months = {
+        "janeiro": "01",
+        "fevereiro": "02",
+        "março": "03",
+        "marco": "03",
+        "abril": "04",
+        "maio": "05",
+        "junho": "06",
+        "julho": "07",
+        "agosto": "08",
+        "setembro": "09",
+        "outubro": "10",
+        "novembro": "11",
+        "dezembro": "12",
+    }
+
     for row in rows:
         text = row_text(row)
+
         match = labelled.search(text)
         if match:
             return match.group(2), f"{int(match.group(1)):02d}"
+
+        match = named_month.search(text)
+        if match:
+            month_name = match.group(1).lower().replace("ç", "c")
+            return match.group(2), months[month_name]
+
     return "", ""
 
 
@@ -229,6 +261,42 @@ def _summary_items(row: list[Word]) -> list[dict]:
             items.append({"label": label, "value": match.group(1)})
     return items
 
+def _parse_receipt_payroll(
+    rows: list[list[Word]],
+) -> tuple[list[dict], list[dict]]:
+    """Extrai totais confiáveis do layout Recibo de Pagamento via OCR."""
+
+    bases: list[dict] = []
+
+    for row in rows:
+        text = row_text(row).lower()
+        values = _money_words(row)
+
+        if "otal de proventos" in text and values:
+            bases.append(
+                {
+                    "label": "Total Proventos",
+                    "value": values[0].text,
+                }
+            )
+
+        if "otal de descontos" in text and values:
+            bases.append(
+                {
+                    "label": "Total Descontos",
+                    "value": values[-1].text,
+                }
+            )
+
+        if "liquido a receber" in text and values:
+            bases.append(
+                {
+                    "label": "Valor Líquido",
+                    "value": values[0].text,
+                }
+            )
+
+    return [], _dedupe_bases(bases)
 
 def _parse_generic_section(rows: list[list[Word]], width: float) -> tuple[list[dict], list[dict]]:
     """Lê uma tabela simples preservando inclusive referências textuais."""
@@ -314,32 +382,72 @@ def _dedupe_bases(items: list[dict]) -> list[dict]:
 def parse_payroll(path: str | Path) -> dict:
     pages: list[dict] = []
     doc = pymupdf.open(path)
+
     try:
         is_financial_statement = bool(doc) and "fichafinanceira" in re.sub(
             r"\s+", "", doc[0].get_text("text").lower()
         )
+
         for number, page in enumerate(doc, 1):
             words, _source = extract_page(page)
             rows = group_rows(words)
             year, month = _competence(rows)
             text = " ".join(row_text(row).lower() for row in rows[:30])
-            if is_financial_statement or "fichafinanceira" in text or "ficha financeira" in text:
-                # É o bônus ficha financeira; não forçamos no parser obrigatório.
+
+            if (
+                is_financial_statement
+                or "fichafinanceira" in text
+                or "ficha financeira" in text
+            ):
                 fields, bases, sections = [], [], []
                 year, month = "", ""
-            elif "demonstrativo" in text or any("cod." in row_text(r).lower() for r in rows):
+
+            elif (
+                "demonstrativo" in text
+                or any("cod." in row_text(row).lower() for row in rows)
+            ):
                 fields, bases = _parse_code_table(rows, page.rect.width)
-                sections = [{"payroll_type": "MENSAL", "fields": fields, "bases": bases}]
+                sections = [
+                    {
+                        "payroll_type": "MENSAL",
+                        "fields": fields,
+                        "bases": bases,
+                    }
+                ]
+
+            elif "recibo de pagamento" in text:
+                fields, bases = _parse_receipt_payroll(rows)
+                sections = [
+                    {
+                        "payroll_type": "MENSAL",
+                        "fields": fields,
+                        "bases": bases,
+                    }
+                ]
+
             else:
-                fields, bases, sections = _parse_generic_payroll(rows, page.rect.width)
-                # Sem competência e quase sem verbas, o fallback não possui
-                # evidência suficiente. Uma página vazia é melhor que lixo.
+                fields, bases, sections = _parse_generic_payroll(
+                    rows,
+                    page.rect.width,
+                )
+
                 if not year and not month and len(fields) < 3:
                     fields, bases, sections = [], [], []
-            pages.append({"page": number, "year": year, "month": month,
-                          "fields": fields, "bases": bases, "sections": sections})
+
+            pages.append(
+                {
+                    "page": number,
+                    "year": year,
+                    "month": month,
+                    "fields": fields,
+                    "bases": bases,
+                    "sections": sections,
+                }
+            )
+
     finally:
         doc.close()
+
     return {"pages": pages}
 
 
