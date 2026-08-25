@@ -263,10 +263,13 @@ def _summary_items(row: list[Word]) -> list[dict]:
 
 def _parse_receipt_payroll(
     rows: list[list[Word]],
+    width: float,
 ) -> tuple[list[dict], list[dict]]:
-    """Extrai totais confiáveis do layout Recibo de Pagamento via OCR."""
+    """Extrai campos e totais do layout Recibo de Pagamento via OCR."""
 
+    fields: list[dict] = []
     bases: list[dict] = []
+    seen_fields: set[tuple[str, str]] = set()
 
     for row in rows:
         text = row_text(row).lower()
@@ -296,7 +299,91 @@ def _parse_receipt_payroll(
                 }
             )
 
-    return [], _dedupe_bases(bases)
+        left_words = [
+            word for word in row
+            if word.x0 < width * 0.45
+        ]
+        right_words = [
+            word for word in row
+            if word.x0 >= width * 0.45
+        ]
+
+        for column_words in (left_words, right_words):
+            column_values = _money_words(column_words)
+
+            if len(column_values) != 1:
+                continue
+
+            value = column_values[0].text
+            label_words = [
+                word.text for word in column_words
+                if not MONEY_RE.match(word.text)
+            ]
+            label = " ".join(label_words).strip(" :-|")
+
+            blocked_labels = (
+                "descrição",
+                "qtde",
+                "valor",
+                "otal de",
+                "liquido",
+            )
+
+            if not label or any(
+                blocked in label.lower()
+                for blocked in blocked_labels
+            ):
+                continue
+
+            related_index = next(
+                (
+                    index
+                    for index, existing in enumerate(fields)
+                    if existing["value"] == value
+                    and (
+                        label == existing["label"][1:]
+                        or existing["label"] == label[1:]
+                    )
+                ),
+                None,
+            )
+
+            if related_index is not None:
+                existing = fields[related_index]
+
+                if len(label) < len(existing["label"]):
+                    old_key = (
+                        existing["label"],
+                        existing["value"],
+                    )
+                    seen_fields.discard(old_key)
+
+                    fields[related_index] = {
+                        "code": "",
+                        "label": label,
+                        "reference": "",
+                        "value": value,
+                    }
+                    seen_fields.add((label, value))
+
+                continue
+
+            key = (label, value)
+
+            if key in seen_fields:
+                continue
+
+            fields.append(
+                {
+                    "code": "",
+                    "label": label,
+                    "reference": "",
+                    "value": value,
+                }
+            )
+            seen_fields.add(key)
+
+    return fields, _dedupe_bases(bases)
 
 def _parse_generic_section(rows: list[list[Word]], width: float) -> tuple[list[dict], list[dict]]:
     """Lê uma tabela simples preservando inclusive referências textuais."""
@@ -416,7 +503,7 @@ def parse_payroll(path: str | Path) -> dict:
                 ]
 
             elif "recibo de pagamento" in text:
-                fields, bases = _parse_receipt_payroll(rows)
+                fields, bases = _parse_receipt_payroll(rows, page.rect.width)
                 sections = [
                     {
                         "payroll_type": "MENSAL",

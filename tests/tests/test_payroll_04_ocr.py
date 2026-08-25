@@ -21,3 +21,11 @@ def test_payroll_04_ocr_extracts_competence_and_totals():
     assert ("Total Proventos", "2.227,04") in bases
     assert ("Total Descontos", "211,43") in bases
     assert ("Valor Líquido", "2.015,61") in bases
+
+    fields = {(item["label"], item["value"]) for item in page["fields"]}
+
+    assert ("SALARIO", "953,36") in fields
+    assert ("INSS MES", "200,43") in fields
+
+    assert ("REMUNERACAO VARIAVEL", "1.100,00") in fields
+    assert ("IREMUNERACAO VARIAVEL", "1.100,00") not in fields
