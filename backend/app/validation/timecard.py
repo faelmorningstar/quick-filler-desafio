@@ -88,6 +88,71 @@ def validate_timecard_page(
 
     return warnings
 
+def validate_timecard_transcription(
+    transcription: dict,
+) -> list[ValidationWarning]:
+    """Gera avisos a partir do JSON atual de cartão de ponto."""
+
+    warnings: list[ValidationWarning] = []
+
+    for page in transcription.get("pages", []):
+        page_number = page.get("page", 0)
+
+        for row, day in enumerate(page.get("days", [])):
+            punches = day.get("punches", [])
+
+            if len(punches) % 2 != 0:
+                warnings.append(
+                    ValidationWarning(
+                        code="ODD_PUNCHES",
+                        message="O dia possui número ímpar de batidas.",
+                        page=page_number,
+                        row=row,
+                    )
+                )
+
+            previous_minutes: int | None = None
+
+            for punch in punches:
+                minutes = _time_to_minutes(
+                    punch.get("time_hhmm", "")
+                )
+
+                if minutes is None:
+                    continue
+
+                if (
+                    previous_minutes is not None
+                    and minutes < previous_minutes
+                ):
+                    warnings.append(
+                        ValidationWarning(
+                            code="OUT_OF_ORDER_PUNCHES",
+                            message="Há horários fora de ordem; revise a transcrição.",
+                            page=page_number,
+                            row=row,
+                        )
+                    )
+                    break
+
+                previous_minutes = minutes
+
+    return warnings
+
+
+def _time_to_minutes(value: str) -> int | None:
+    if "?" in value:
+        return None
+
+    try:
+        hour, minute = map(int, value.split(":"))
+    except ValueError:
+        return None
+
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return None
+
+    return hour * 60 + minute
 
 def _parse_date(value: str) -> date | None:
     """

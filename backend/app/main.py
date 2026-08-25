@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from .exporter import export_csv, export_json, export_xlsx
 from .transcription import parse_document
+from .validation.timecard import validate_timecard_transcription
 
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
@@ -28,12 +29,39 @@ app = FastAPI(title="Quick Filler", version="1.0.0")
 class Correction(BaseModel):
     value: dict[str, Any]
 
+def _warnings_for(
+    value: dict[str, Any],
+    document_type: str,
+) -> list[dict[str, Any]]:
+    if document_type != "cartao-ponto":
+        return []
+
+    warnings = validate_timecard_transcription(value)
+
+    return [
+        {
+            "code": warning.code,
+            "message": warning.message,
+            "page": warning.page,
+            "row": warning.row,
+            "severity": warning.severity.value,
+        }
+        for warning in warnings
+    ]
 
 def _process(job_id: str, path: Path, document_type: str) -> None:
     try:
+
         value = parse_document(path, document_type)
+        warnings = _warnings_for(value, document_type)
+
         with LOCK:
-            JOBS[job_id].update(status="concluido", erro=None, value=value)
+            JOBS[job_id].update(
+                status="concluido",
+                erro=None,
+                value=value,
+                warnings=warnings,
+            )
     except Exception as exc:
         with LOCK:
             JOBS[job_id].update(status="erro", erro=f"Falha ao processar o PDF: {type(exc).__name__}", value=None)
@@ -58,22 +86,36 @@ async def create_transcription(
 ) -> dict[str, str]:
     if tipo not in {"cartao-ponto", "holerite"}:
         raise HTTPException(422, "tipo inválido")
+
     content = await arquivo.read(MAX_UPLOAD_BYTES + 1)
+
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "PDF excede o limite de 15 MB")
+
     if not content.startswith(b"%PDF-"):
         raise HTTPException(415, "o arquivo enviado não é um PDF válido")
+
     job_id = secrets.token_urlsafe(9)
     job_dir = STORE / job_id
     job_dir.mkdir(parents=True, exist_ok=False)
+
     pdf_path = job_dir / "documento.pdf"
     pdf_path.write_bytes(content)
-    with LOCK:
-        JOBS[job_id] = {"id": job_id, "tipo": tipo, "status": "processando",
-                        "erro": None, "value": None, "path": pdf_path}
-    background_tasks.add_task(_process, job_id, pdf_path, tipo)
-    return {"id": job_id}
 
+    with LOCK:
+        JOBS[job_id] = {
+            "id": job_id,
+            "tipo": tipo,
+            "status": "processando",
+            "erro": None,
+            "value": None,
+            "warnings": [],
+            "path": pdf_path,
+        }
+
+    background_tasks.add_task(_process, job_id, pdf_path, tipo)
+
+    return {"id": job_id}
 
 def _job(job_id: str) -> dict[str, Any]:
     job = JOBS.get(job_id)
@@ -85,7 +127,10 @@ def _job(job_id: str) -> dict[str, Any]:
 @app.get("/api/transcricoes/{job_id}")
 def get_transcription(job_id: str) -> dict[str, Any]:
     job = _job(job_id)
-    return {key: job[key] for key in ("id", "tipo", "status", "erro", "value")}
+    return {
+    key: job[key]
+    for key in ("id", "tipo", "status", "erro", "value", "warnings")
+}
 
 
 @app.put("/api/transcricoes/{job_id}")
@@ -93,9 +138,20 @@ def update_transcription(job_id: str, correction: Correction) -> dict[str, Any]:
     job = _job(job_id)
     if job["status"] != "concluido":
         raise HTTPException(409, "a transcrição ainda não foi concluída")
+        warnings = _warnings_for(correction.value, job["tipo"])
+
     with LOCK:
         job["value"] = correction.value
-    return {"id": job_id, "tipo": job["tipo"], "status": "concluido", "erro": None, "value": job["value"]}
+        job["warnings"] = warnings
+
+    return {
+        "id": job_id,
+        "tipo": job["tipo"],
+        "status": "concluido",
+        "erro": None,
+        "value": job["value"],
+        "warnings": job["warnings"],
+    }
 
 
 @app.get("/api/transcricoes/{job_id}/pdf")
