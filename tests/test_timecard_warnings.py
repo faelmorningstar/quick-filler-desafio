@@ -28,3 +28,20 @@ def test_transcription_warns_about_odd_and_out_of_order_punches():
     ]
     assert all(warning.page == 1 for warning in warnings)
     assert all(warning.row == 0 for warning in warnings)
+
+def test_transcription_warns_when_page_has_no_days():
+    transcription = {
+        "pages": [
+            {
+                "page": 1,
+                "days": [],
+            }
+        ]
+    }
+
+    warnings = validate_timecard_transcription(transcription)
+
+    assert len(warnings) == 1
+    assert warnings[0].code == "EMPTY_PAGE"
+    assert warnings[0].page == 1
+    assert warnings[0].row is None

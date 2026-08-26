@@ -97,8 +97,20 @@ def validate_timecard_transcription(
 
     for page in transcription.get("pages", []):
         page_number = page.get("page", 0)
+        days = page.get("days", [])
 
-        for row, day in enumerate(page.get("days", [])):
+        if not days:
+            warnings.append(
+                ValidationWarning(
+                    code="EMPTY_PAGE",
+                    message="Nenhum dia pôde ser extraído desta página.",
+                    page=page_number,
+                    row=None,
+                )
+            )
+            continue
+
+        for row, day in enumerate(days):
             punches = day.get("punches", [])
 
             if len(punches) % 2 != 0:

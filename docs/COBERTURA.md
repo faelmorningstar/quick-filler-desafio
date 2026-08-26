@@ -11,7 +11,7 @@ Esta matriz registra o comportamento observado da versão de portfólio do Quick
 | `time-card-01.pdf` | Cartão de ponto | 22.589 caracteres | Testado | Páginas e dias extraídos |
 | `time-card-02.pdf` | Cartão de ponto | 0 caracteres | Parcial com OCR | OCR executa; avisos de confiabilidade e revisão manual |
 | `time-card-03.pdf` | Cartão de ponto | 0 caracteres | Parcial com OCR | Ordem visual das batidas testada no Docker; revisão manual continua necessária |
-| `time-card-04.pdf` | Cartão de ponto | 0 caracteres | Não avaliado | Exige OCR; imagem mais difícil |
+| `time-card-04.pdf` | Cartão de ponto | 0 caracteres | Não confiável | OCR não recupera datas ou batidas; a aplicação sinaliza página sem dados extraídos |
 
 ## Critério de confiabilidade
 
