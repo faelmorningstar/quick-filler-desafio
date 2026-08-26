@@ -560,11 +560,14 @@ def _punches(times: list[str]) -> list[dict]:
 
 def _order_time_words(
     time_words: list[tuple[float, str]],
-    first_interval_x: float,
+    first_interval_x: float | None,
 ) -> list[str]:
-    """Coloca a saída final depois dos horários de intervalo."""
+    """Ordena horários conforme o layout identificado no cabeçalho."""
 
     ordered = sorted(time_words, key=lambda item: item[0])
+
+    if first_interval_x is None:
+        return [value for _, value in ordered]
 
     main_column_times = [
         value for x0, value in ordered
@@ -607,7 +610,7 @@ def parse_timecard(path: str | Path) -> dict:
             first_interval_x = (
                 (min(starts) + min(interval_starts)) / 2
                 if starts and interval_starts
-                else data_left + (data_right - data_left) * 0.25
+                else None
 )
             days: list[dict] = []
             current: dict | None = None

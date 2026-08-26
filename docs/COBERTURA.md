@@ -10,7 +10,7 @@ Esta matriz registra o comportamento observado da versão de portfólio do Quick
 | `payroll-04.pdf` | Holerite | 425 caracteres | Parcial com OCR | Competência, totais e campos por coluna extraídos; revisão manual ainda necessária para erros de OCR |
 | `time-card-01.pdf` | Cartão de ponto | 22.589 caracteres | Testado | Páginas e dias extraídos |
 | `time-card-02.pdf` | Cartão de ponto | 0 caracteres | Parcial com OCR | OCR executa; avisos de confiabilidade e revisão manual |
-| `time-card-03.pdf` | Cartão de ponto | 0 caracteres | Não avaliado | Exige OCR e teste com referência visual |
+| `time-card-03.pdf` | Cartão de ponto | 0 caracteres | Parcial com OCR | Ordem visual das batidas testada no Docker; revisão manual continua necessária |
 | `time-card-04.pdf` | Cartão de ponto | 0 caracteres | Não avaliado | Exige OCR; imagem mais difícil |
 
 ## Critério de confiabilidade
