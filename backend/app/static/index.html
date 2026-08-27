@@ -131,54 +131,105 @@ iframe {
   border-radius: 8px;
 }
 
-textarea {
+.review {
+  min-width: 0;
+}
+
+.review-empty {
+  padding: 28px;
+  border: 1px dashed #b8c5d8;
+  border-radius: 8px;
+  color: #5f6f86;
+  text-align: center;
+  background: #f8faff;
+}
+
+.table-wrap {
   width: 100%;
-  min-height: 60vh;
-  padding: 14px;
-  border: 1px solid #b8c5d8;
+  overflow-x: auto;
+  border: 1px solid #d9e1ef;
   border-radius: 8px;
-  background: #0f1d36;
-  color: #eaf1ff;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  resize: vertical;
-}
-
-.warning {
-  margin: 0 0 12px;
-  color: #7a5700;
-}
-
-.warnings {
-  margin: 12px 0;
-  padding: 14px;
-  border: 1px solid #e3bd55;
-  border-radius: 8px;
-  color: #624700;
-  background: #fff8df;
-}
-
-.warnings ul {
-  margin: 8px 0 0;
-  padding-left: 20px;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
-.actions button[data-format] {
-  border-color: #b8c5d8;
-  color: #173772;
   background: #ffffff;
 }
 
-.actions button[data-format]:hover {
-  background: #eaf1ff;
+.review-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.review-table th,
+.review-table td {
+  padding: 8px;
+  border-right: 1px solid #d9e1ef;
+  border-bottom: 1px solid #d9e1ef;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.review-table th:last-child,
+.review-table td:last-child {
+  border-right: 0;
+}
+
+.review-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.review-table th {
+  color: #ffffff;
+  background: #173772;
+  white-space: nowrap;
+}
+
+.review-table input {
+  width: 100%;
+  min-width: 90px;
+  padding: 8px;
+  border: 1px solid #b8c5d8;
+  border-radius: 6px;
+  color: #17233a;
+  background: #ffffff;
+}
+
+.review-table input:focus {
+  border-color: #3768b7;
+  outline: 2px solid #dce9ff;
+}
+
+.review-table tr.row-warning td {
+  background: #fff3cd;
+}
+
+.review-table tr.row-error td {
+  background: #f8d7da;
+}
+
+.review-table tr.row-error td:first-child {
+  border-left: 4px solid #dc3545;
+}
+
+.page-block + .page-block {
+  margin-top: 20px;
+}
+
+.page-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 10px;
+  color: #173772;
+}
+
+.page-heading span {
+  font-weight: 700;
+}
+
+.table-title {
+  margin: 14px 0 8px;
+  font-size: 0.95rem;
+  color: #34445f;
 }
 
 @media (max-width: 900px) {
@@ -203,13 +254,23 @@ textarea {
   <section id="workspace" class="grid hidden"><div class="panel"><h2>Documento</h2><iframe id="pdf"></iframe></div>
     <div class="panel"><h2>Transcrição editável</h2><p class="warning">Use <code>?</code> quando um caractere não puder ser confirmado.</p> 
       <div id="warnings" class="warnings hidden"></div>
-      <textarea id="editor" spellcheck="false"></textarea><div class="actions"><button id="save">Salvar correções</button>
+      <div id="review" class="review">
+  <div class="review-empty">
+    Envie um PDF para iniciar a revisão.
+  </div>
+</div><div class="actions"><button id="save">Salvar correções</button>
       <button data-format="xlsx">Baixar XLSX</button><button data-format="csv">Baixar CSV</button><button data-format="json">Baixar JSON</button></div></div></section>
 <script>
 let id = null;
+let currentValue = null;
+let currentType = null;
+let currentWarnings = [];
+
 const status = document.querySelector("#status");
-const editor = document.querySelector("#editor");
+const review = document.querySelector("#review");
 const warningBox = document.querySelector("#warnings");
+const workspace = document.querySelector("#workspace");
+const pdf = document.querySelector("#pdf");
 
 function renderWarnings(warnings) {
   warningBox.replaceChildren();
@@ -237,17 +298,376 @@ function renderWarnings(warnings) {
   warningBox.append(title, list);
   warningBox.classList.remove("hidden");
 }
-document.querySelector('#form').addEventListener('submit',async e=>{e.preventDefault();status.textContent='Enviando...';
- const response=await fetch('/api/transcricoes',{method:'POST',body:new FormData(e.target)});if(!response.ok){status.textContent=await response.text();return}
- id=(await response.json()).id;status.textContent='Processando...';poll();});
-async function poll(){const data=await (await fetch(`/api/transcricoes/${id}`)).json();status.textContent=data.status;
- if(data.status==='processando'){setTimeout(poll,1000);return}if(data.status==='erro'){status.textContent=data.erro;return}
- editor.value = JSON.stringify(data.value, null, 2);
- renderWarnings(data.warnings);document.querySelector('#pdf').src=`/api/transcricoes/${id}/pdf`;
- document.querySelector('#workspace').classList.remove('hidden');}
-document.querySelector("#save").addEventListener("click", async () => {
+
+function createInput(value, data = {}) {
+  const input = document.createElement("input");
+  input.className = "review-input";
+  input.value = value ?? "";
+
+  for (const [key, item] of Object.entries(data)) {
+    input.dataset[key] = item;
+  }
+
+  return input;
+}
+
+function appendTextCell(row, text) {
+  const cell = document.createElement("td");
+  cell.textContent = text ?? "";
+  row.append(cell);
+}
+
+function appendInputCell(row, value, data) {
+  const cell = document.createElement("td");
+  cell.append(createInput(value, data));
+  row.append(cell);
+}
+
+function createTable(headers) {
+  const table = document.createElement("table");
+  table.className = "review-table";
+
+  const head = document.createElement("thead");
+  const row = document.createElement("tr");
+
+  for (const header of headers) {
+    const cell = document.createElement("th");
+    cell.textContent = header;
+    row.append(cell);
+  }
+
+  head.append(row);
+  table.append(head, document.createElement("tbody"));
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "table-wrap";
+  wrapper.append(table);
+
+  return {wrapper, table, body: table.querySelector("tbody")};
+}
+
+function warningsForRow(pageNumber, rowIndex) {
+  return currentWarnings.filter(
+    warning =>
+      Number(warning.page) === Number(pageNumber) &&
+      warning.row != null &&
+      Number(warning.row) === Number(rowIndex)
+  );
+}
+
+function applyWarningsToRow(row, pageNumber, rowIndex) {
+  const warnings = warningsForRow(pageNumber, rowIndex);
+
+  if (!warnings.length) {
+    return;
+  }
+
+  const hasError = warnings.some(
+    warning => String(warning.severity).toLowerCase() === "error"
+  );
+
+  row.classList.add(hasError ? "row-error" : "row-warning");
+  row.title = warnings.map(warning => warning.message).join(" | ");
+}
+
+function showEmptyReview(message) {
+  review.replaceChildren();
+
+  const empty = document.createElement("div");
+  empty.className = "review-empty";
+  empty.textContent = message;
+
+  review.append(empty);
+}
+
+function renderTimecard() {
+  review.replaceChildren();
+
+  const pages = currentValue?.pages ?? [];
+  const days = pages.flatMap(page => page.days ?? []);
+
+  if (!days.length) {
+    showEmptyReview("Nenhum dia foi extraído.");
+    return;
+  }
+
+  const maxPunches = Math.max(
+    0,
+    ...days.map(day => (day.punches ?? []).length)
+  );
+
+  const headers = ["Pág.", "Data"];
+
+  for (let index = 0; index < maxPunches; index += 1) {
+    const pair = Math.floor(index / 2) + 1;
+    headers.push(index % 2 === 0 ? `Entrada ${pair}` : `Saída ${pair}`);
+  }
+
+  const {wrapper, body} = createTable(headers);
+
+  pages.forEach((page, pageIndex) => {
+    const pageNumber = page.page ?? pageIndex + 1;
+
+    (page.days ?? []).forEach((day, dayIndex) => {
+      const row = document.createElement("tr");
+      row.className = "timecard-row";
+      row.dataset.page = pageIndex;
+      row.dataset.day = dayIndex;
+
+      appendTextCell(row, pageNumber);
+
+      appendInputCell(row, day.date_raw, {
+        kind: "date",
+        page: pageIndex,
+        day: dayIndex,
+      });
+
+      for (let punchIndex = 0; punchIndex < maxPunches; punchIndex += 1) {
+        const punch = (day.punches ?? [])[punchIndex];
+
+        appendInputCell(
+          row,
+          punch?.time_hhmm ?? punch?.time_raw ?? "",
+          {
+            kind: "punch",
+            page: pageIndex,
+            day: dayIndex,
+            punch: punchIndex,
+          }
+        );
+      }
+
+      applyWarningsToRow(row, pageNumber, dayIndex);
+      body.append(row);
+    });
+  });
+
+  review.append(wrapper);
+}
+
+function renderPayrollTable(page, pageIndex, kind, title, headers, items) {
+  const heading = document.createElement("h4");
+  heading.className = "table-title";
+  heading.textContent = title;
+
+  const {wrapper, body} = createTable(headers);
+
+  items.forEach((item, itemIndex) => {
+    const row = document.createElement("tr");
+
+    const properties = kind === "field"
+      ? ["code", "label", "reference", "value"]
+      : ["label", "value"];
+
+    for (const property of properties) {
+      appendInputCell(row, item[property], {
+        kind,
+        page: pageIndex,
+        item: itemIndex,
+        property,
+      });
+    }
+
+    body.append(row);
+  });
+
+  page.append(heading, wrapper);
+}
+
+function renderPayroll() {
+  review.replaceChildren();
+
+  const pages = currentValue?.pages ?? [];
+
+  if (!pages.length) {
+    showEmptyReview("Nenhuma página foi extraída.");
+    return;
+  }
+
+  pages.forEach((pageData, pageIndex) => {
+    const block = document.createElement("section");
+    block.className = "page-block";
+
+    const heading = document.createElement("div");
+    heading.className = "page-heading";
+
+    const pageLabel = document.createElement("span");
+    pageLabel.textContent = `Página ${pageData.page ?? pageIndex + 1}`;
+
+    const monthLabel = document.createElement("label");
+    monthLabel.textContent = "Mês ";
+    monthLabel.append(
+      createInput(pageData.month, {
+        kind: "page",
+        page: pageIndex,
+        property: "month",
+      })
+    );
+
+    const yearLabel = document.createElement("label");
+    yearLabel.textContent = "Ano ";
+    yearLabel.append(
+      createInput(pageData.year, {
+        kind: "page",
+        page: pageIndex,
+        property: "year",
+      })
+    );
+
+    heading.append(pageLabel, monthLabel, yearLabel);
+    block.append(heading);
+
+    renderPayrollTable(
+      block,
+      pageIndex,
+      "field",
+      "Verbas",
+      ["Código", "Descrição", "Referência", "Valor"],
+      pageData.fields ?? []
+    );
+
+    renderPayrollTable(
+      block,
+      pageIndex,
+      "base",
+      "Bases e totais",
+      ["Descrição", "Valor"],
+      pageData.bases ?? []
+    );
+
+    review.append(block);
+  });
+}
+
+function renderReview() {
+  if (currentType === "cartao-ponto") {
+    renderTimecard();
+    return;
+  }
+
+  if (currentType === "holerite") {
+    renderPayroll();
+    return;
+  }
+
+  showEmptyReview("Tipo de documento não reconhecido.");
+}
+
+function collectEdits() {
+  review.querySelectorAll(".review-input").forEach(input => {
+    const pageIndex = Number(input.dataset.page);
+    const page = currentValue.pages[pageIndex];
+    const kind = input.dataset.kind;
+
+    if (kind === "date") {
+      const dayIndex = Number(input.dataset.day);
+      page.days[dayIndex].date_raw = input.value.trim();
+    }
+
+    if (kind === "page") {
+      page[input.dataset.property] = input.value.trim();
+    }
+
+    if (kind === "field" || kind === "base") {
+      const collection = kind === "field" ? page.fields : page.bases;
+      const itemIndex = Number(input.dataset.item);
+
+      collection[itemIndex][input.dataset.property] = input.value.trim();
+    }
+  });
+
+  review.querySelectorAll(".timecard-row").forEach(row => {
+    const pageIndex = Number(row.dataset.page);
+    const dayIndex = Number(row.dataset.day);
+
+    const times = [...row.querySelectorAll('[data-kind="punch"]')]
+      .map(input => input.value.trim())
+      .filter(Boolean);
+
+    currentValue.pages[pageIndex].days[dayIndex].punches =
+      times.map((time, index) => ({
+        kind: index % 2 === 0 ? "IN" : "OUT",
+        time_raw: time,
+        time_hhmm: time,
+      }));
+  });
+
+  return currentValue;
+}
+
+document.querySelector("#form").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  workspace.classList.add("hidden");
+  warningBox.classList.add("hidden");
+  pdf.removeAttribute("src");
+  currentValue = null;
+  currentType = null;
+  currentWarnings = [];
+  status.textContent = "Enviando...";
+
   try {
-    const value = JSON.parse(editor.value);
+    const response = await fetch("/api/transcricoes", {
+      method: "POST",
+      body: new FormData(event.target),
+    });
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    id = (await response.json()).id;
+    status.textContent = "Processando...";
+    poll();
+  } catch (error) {
+    status.textContent = `Falha no envio: ${error.message}`;
+  }
+});
+
+async function poll() {
+  try {
+    const response = await fetch(`/api/transcricoes/${id}`);
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    const data = await response.json();
+
+    if (data.status === "processando") {
+      status.textContent = "Processando...";
+      setTimeout(poll, 1000);
+      return;
+    }
+
+    if (data.status === "erro") {
+      status.textContent = data.erro;
+      return;
+    }
+
+    currentValue = data.value;
+    currentType = data.tipo;
+    currentWarnings = data.warnings ?? [];
+
+    renderWarnings(currentWarnings);
+    renderReview();
+
+    pdf.src = `/api/transcricoes/${id}/pdf`;
+    workspace.classList.remove("hidden");
+    status.textContent = "Revisão necessária";
+  } catch (error) {
+    status.textContent = `Falha ao consultar: ${error.message}`;
+  }
+}
+
+document.querySelector("#save").addEventListener("click", async () => {
+  if (!id || !currentValue) {
+    status.textContent = "Nenhuma transcrição disponível.";
+    return;
+  }
+
+  try {
+    const value = collectEdits();
 
     const response = await fetch(`/api/transcricoes/${id}`, {
       method: "PUT",
@@ -256,19 +676,29 @@ document.querySelector("#save").addEventListener("click", async () => {
     });
 
     if (!response.ok) {
-      throw Error(await response.text());
+      throw new Error(await response.text());
     }
 
     const data = await response.json();
-    renderWarnings(data.warnings);
+
+    currentValue = data.value;
+    currentWarnings = data.warnings ?? [];
+
+    renderWarnings(currentWarnings);
+    renderReview();
     status.textContent = "Correções salvas";
   } catch (error) {
-    status.textContent = "JSON inválido: " + error.message;
+    status.textContent = `Não foi possível salvar: ${error.message}`;
   }
 });
 
-document.querySelectorAll("[data-format]").forEach((button) => {
+document.querySelectorAll("[data-format]").forEach(button => {
   button.addEventListener("click", () => {
+    if (!id || !currentValue) {
+      status.textContent = "Nenhuma transcrição disponível.";
+      return;
+    }
+
     window.location =
       `/api/transcricoes/${id}/planilha?formato=${button.dataset.format}`;
   });

@@ -216,8 +216,14 @@ def update_transcription(
 @app.get("/api/transcricoes/{job_id}/pdf")
 def get_pdf(job_id: str) -> FileResponse:
     job = _job(job_id)
-    return FileResponse(job["path"], media_type="application/pdf", filename="documento.pdf")
 
+    return FileResponse(
+        path=job["path"],
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'inline; filename="documento.pdf"',
+        },
+    )
 
 @app.get("/api/transcricoes/{job_id}/planilha")
 def download(job_id: str, formato: str = "xlsx") -> Response:

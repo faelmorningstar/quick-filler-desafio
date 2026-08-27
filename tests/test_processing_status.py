@@ -65,3 +65,32 @@ def test_fully_empty_extraction_ends_with_error(
     assert job["value"] is None
     assert job["warnings"] == []
     assert "nenhum dado" in job["erro"].lower()
+
+def test_pdf_response_is_displayed_inline(
+    monkeypatch,
+    tmp_path: Path,
+):
+    job_id = "inline-pdf"
+    pdf_path = tmp_path / "documento.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+
+    monkeypatch.setitem(
+        main.JOBS,
+        job_id,
+        {
+            "id": job_id,
+            "tipo": "cartao-ponto",
+            "status": "concluido",
+            "erro": None,
+            "value": {"pages": []},
+            "warnings": [],
+            "path": pdf_path,
+        },
+    )
+
+    response = main.get_pdf(job_id)
+
+    assert response.media_type == "application/pdf"
+    assert response.headers["content-disposition"] == (
+        'inline; filename="documento.pdf"'
+    )
