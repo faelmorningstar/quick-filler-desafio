@@ -49,10 +49,51 @@ def _warnings_for(
         for warning in warnings
     ]
 
-def _process(job_id: str, path: Path, document_type: str) -> None:
-    try:
+def _has_extracted_data(
+    value: dict[str, Any],
+    document_type: str,
+) -> bool:
+    pages = value.get("pages")
 
+    if not isinstance(pages, list):
+        return False
+
+    if document_type == "cartao-ponto":
+        return any(
+            isinstance(page, dict) and bool(page.get("days"))
+            for page in pages
+        )
+
+    if document_type == "holerite":
+        return any(
+            isinstance(page, dict)
+            and bool(page.get("fields") or page.get("bases"))
+            for page in pages
+        )
+
+    return False
+
+def _process(
+    job_id: str,
+    path: Path,
+    document_type: str,
+) -> None:
+    try:
         value = parse_document(path, document_type)
+
+        if not _has_extracted_data(value, document_type):
+            with LOCK:
+                JOBS[job_id].update(
+                    status="erro",
+                    erro=(
+                        "Nenhum dado foi extraído do documento. "
+                        "Verifique a qualidade do PDF ou do OCR."
+                    ),
+                    value=None,
+                    warnings=[],
+                )
+            return
+
         warnings = _warnings_for(value, document_type)
 
         with LOCK:
@@ -64,8 +105,15 @@ def _process(job_id: str, path: Path, document_type: str) -> None:
             )
     except Exception as exc:
         with LOCK:
-            JOBS[job_id].update(status="erro", erro=f"Falha ao processar o PDF: {type(exc).__name__}", value=None)
-
+            JOBS[job_id].update(
+                status="erro",
+                erro=(
+                    "Falha ao processar o PDF: "
+                    f"{type(exc).__name__}"
+                ),
+                value=None,
+                warnings=[],
+            )
 
 @app.get("/", response_class=HTMLResponse)
 def home() -> HTMLResponse:
@@ -134,11 +182,22 @@ def get_transcription(job_id: str) -> dict[str, Any]:
 
 
 @app.put("/api/transcricoes/{job_id}")
-def update_transcription(job_id: str, correction: Correction) -> dict[str, Any]:
+def update_transcription(
+    job_id: str,
+    correction: Correction,
+) -> dict[str, Any]:
     job = _job(job_id)
+
     if job["status"] != "concluido":
-        raise HTTPException(409, "a transcrição ainda não foi concluída")
-        warnings = _warnings_for(correction.value, job["tipo"])
+        raise HTTPException(
+            409,
+            "a transcrição ainda não foi concluída",
+        )
+
+    warnings = _warnings_for(
+        correction.value,
+        job["tipo"],
+    )
 
     with LOCK:
         job["value"] = correction.value
