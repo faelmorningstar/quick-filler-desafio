@@ -4,23 +4,196 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Quick Filler</title>
   <style>
-    :root{font-family:Inter,Arial,sans-serif;color:#17223b;background:#f3f6fb}*{box-sizing:border-box}
-    body{margin:0}header{background:#173772;color:white;padding:18px 28px}main{padding:22px;max-width:1500px;margin:auto}
-    .upload,.panel{background:white;border:1px solid #d9e1ef;border-radius:10px;padding:16px;box-shadow:0 4px 18px #17377212}
-    button,select,input{padding:10px;border-radius:6px;border:1px solid #aebbd0}button{background:#173772;color:white;cursor:pointer}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.hidden{display:none}iframe{width:100%;height:72vh;border:0}
-    textarea{width:100%;height:60vh;font-family:monospace;font-size:13px;border:1px solid #aebbd0;border-radius:6px;padding:10px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.status{margin-left:10px;font-weight:600}.warning{color:#7a5700}
-    @media(max-width:900px){.grid{grid-template-columns:1fr}iframe{height:55vh}}
-        .warnings{
-      margin:12px 0;
-      padding:12px;
-      border:1px solid #e3bd55;
-      border-radius:6px;
-      background:#fff8df;
-      color:#624700;
-    }
-    .warnings ul{margin:8px 0 0;padding-left:20px}
+    :root {
+  font-family: Inter, Arial, sans-serif;
+  color: #17223b;
+  background: #f4f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+header {
+  padding: 28px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #112a59, #1f4b99);
+  box-shadow: 0 4px 18px #10285830;
+}
+
+header strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+}
+
+main {
+  max-width: 1500px;
+  margin: auto;
+  padding: 28px 22px;
+}
+
+.upload,
+.panel {
+  background: #ffffff;
+  border: 1px solid #d9e1ef;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px #17377212;
+}
+
+.upload {
+  padding: 20px;
+}
+
+.upload form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+button,
+select,
+input {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #b8c5d8;
+  border-radius: 8px;
+  font: inherit;
+}
+
+input[type="file"] {
+  max-width: 320px;
+  background: #f9fbff;
+}
+
+select {
+  background: #ffffff;
+  color: #17223b;
+}
+
+button {
+  border: 1px solid #173772;
+  background: #173772;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+button:hover {
+  background: #102a5c;
+  transform: translateY(-1px);
+}
+
+.status {
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #173772;
+  background: #eaf1ff;
+}
+
+.status:empty {
+  display: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+iframe {
+  width: 100%;
+  height: 72vh;
+  border: 1px solid #d9e1ef;
+  border-radius: 8px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 60vh;
+  padding: 14px;
+  border: 1px solid #b8c5d8;
+  border-radius: 8px;
+  background: #0f1d36;
+  color: #eaf1ff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.warning {
+  margin: 0 0 12px;
+  color: #7a5700;
+}
+
+.warnings {
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid #e3bd55;
+  border-radius: 8px;
+  color: #624700;
+  background: #fff8df;
+}
+
+.warnings ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.actions button[data-format] {
+  border-color: #b8c5d8;
+  color: #173772;
+  background: #ffffff;
+}
+
+.actions button[data-format]:hover {
+  background: #eaf1ff;
+}
+
+@media (max-width: 900px) {
+  main {
+    padding: 18px 14px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  iframe {
+    height: 55vh;
+  }
+}
   </style>
 </head>
 <body><header><strong>Quick Filler</strong> - revisão de transcrições</header><main>
@@ -92,5 +265,15 @@ document.querySelector("#save").addEventListener("click", async () => {
   } catch (error) {
     status.textContent = "JSON inválido: " + error.message;
   }
-}); forEach(button=>button.addEventListener('click',()=>{window.location=`/api/transcricoes/${id}/planilha?formato=${button.dataset.format}`}));
-</script></main></body></html>
+});
+
+document.querySelectorAll("[data-format]").forEach((button) => {
+  button.addEventListener("click", () => {
+    window.location =
+      `/api/transcricoes/${id}/planilha?formato=${button.dataset.format}`;
+  });
+});
+</script>
+</main>
+</body>
+</html>
