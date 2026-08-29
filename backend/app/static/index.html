@@ -229,8 +229,25 @@ iframe {
   border-left: 4px solid #dc3545;
 }
 
+.page-block {
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
 .page-block + .page-block {
   margin-top: 20px;
+}
+
+.page-block.page-warning {
+  border-color: #e3bd55;
+  background: #fff3cd;
+}
+
+.page-block.page-error {
+  border-color: #dc3545;
+  border-left: 4px solid #dc3545;
+  background: #f8d7da;
 }
 
 .page-heading {
@@ -374,6 +391,19 @@ function warningsForRow(pageNumber, rowIndex) {
   );
 }
 
+function warningsForPage(pageNumber) {
+  return currentWarnings.filter(
+    warning => Number(warning.page) === Number(pageNumber)
+  );
+}
+
+function hasSequentialError(warnings) {
+  return warnings.some(warning =>
+    warning.code === "NON_SEQUENTIAL_DATE" ||
+    warning.code === "NON_SEQUENTIAL_MONTH"
+  );
+}
+
 function applyWarningsToRow(row, pageNumber, rowIndex) {
   const warnings = warningsForRow(pageNumber, rowIndex);
 
@@ -382,8 +412,8 @@ function applyWarningsToRow(row, pageNumber, rowIndex) {
   }
 
   const hasError = warnings.some(
-    warning => String(warning.severity).toLowerCase() === "error"
-  );
+  warning => String(warning.severity).toLowerCase() === "error"
+);
 
   row.classList.add(hasError ? "row-error" : "row-warning");
   row.title = warnings.map(warning => warning.message).join(" | ");
@@ -506,6 +536,21 @@ function renderPayroll() {
   pages.forEach((pageData, pageIndex) => {
     const block = document.createElement("section");
     block.className = "page-block";
+
+    const pageNumber = pageData.page ?? pageIndex + 1;
+const pageWarnings = warningsForPage(pageNumber);
+
+if (pageWarnings.length) {
+  block.classList.add(
+    hasSequentialError(pageWarnings)
+      ? "page-error"
+      : "page-warning"
+  );
+
+  block.title = pageWarnings
+    .map(warning => warning.message)
+    .join(" | ");
+}
 
     const heading = document.createElement("div");
     heading.className = "page-heading";
