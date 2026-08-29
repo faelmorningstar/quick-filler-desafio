@@ -13,8 +13,11 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 
 from .exporter import export_csv, export_json, export_xlsx
+from .payroll.schemas import PayrollPage
 from .transcription import parse_document
+from .validation.payroll import validate_payroll_pages
 from .validation.timecard import validate_timecard_transcription
+
 
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
@@ -33,10 +36,18 @@ def _warnings_for(
     value: dict[str, Any],
     document_type: str,
 ) -> list[dict[str, Any]]:
-    if document_type != "cartao-ponto":
-        return []
+    if document_type == "cartao-ponto":
+        warnings = validate_timecard_transcription(value)
 
-    warnings = validate_timecard_transcription(value)
+    elif document_type == "holerite":
+        pages = [
+            PayrollPage.model_validate(page)
+            for page in value.get("pages", [])
+        ]
+        warnings = validate_payroll_pages(pages)
+
+    else:
+        return []
 
     return [
         {

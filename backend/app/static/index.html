@@ -115,6 +115,25 @@ button:hover {
   display: none;
 }
 
+.warnings {
+  display: block;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid #e3bd55;
+  border-radius: 8px;
+  color: #624700;
+  background: #fff8df;
+}
+
+.warnings.hidden {
+  display: none;
+}
+
+.warnings ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
 .panel {
   padding: 20px;
 }
@@ -685,8 +704,22 @@ document.querySelector("#save").addEventListener("click", async () => {
     currentWarnings = data.warnings ?? [];
 
     renderWarnings(currentWarnings);
-    renderReview();
-    status.textContent = "Correções salvas";
+renderReview();
+
+if (currentWarnings.length) {
+  const amount = currentWarnings.length;
+  const label = amount === 1 ? "aviso" : "avisos";
+
+  status.textContent =
+    `Correções salvas — ${amount} ${label} para revisar`;
+
+  warningBox.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
+} else {
+  status.textContent = "Correções salvas — nenhum aviso";
+}
   } catch (error) {
     status.textContent = `Não foi possível salvar: ${error.message}`;
   }

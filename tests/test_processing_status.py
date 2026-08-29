@@ -94,3 +94,39 @@ def test_pdf_response_is_displayed_inline(
     assert response.headers["content-disposition"] == (
         'inline; filename="documento.pdf"'
     )
+
+def test_payroll_warnings_are_exposed_by_api_helper():
+    value = {
+        "pages": [
+            {
+                "page": 1,
+                "year": "2020",
+                "month": "01",
+                "fields": [
+                    {
+                        "code": "0010",
+                        "label": "Salário Base",
+                        "reference": "220,00",
+                        "value": "2.389,77",
+                    }
+                ],
+                "bases": [],
+            },
+            {
+                "page": 2,
+                "year": "2020",
+                "month": "03",
+                "fields": [],
+                "bases": [],
+            },
+        ]
+    }
+
+    warnings = main._warnings_for(value, "holerite")
+    codes = {warning["code"] for warning in warnings}
+
+    assert codes == {
+        "EMPTY_PAGE",
+        "NON_SEQUENTIAL_MONTH",
+    }
+    assert all(warning["page"] == 2 for warning in warnings)
