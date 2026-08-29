@@ -404,19 +404,35 @@ function hasSequentialError(warnings) {
   );
 }
 
-function applyWarningsToRow(row, pageNumber, rowIndex) {
-  const warnings = warningsForRow(pageNumber, rowIndex);
+function applyWarningsToRow(
+  row,
+  pageNumber,
+  rowIndex
+) {
+  const warnings = warningsForRow(
+    pageNumber,
+    rowIndex
+  );
 
   if (!warnings.length) {
     return;
   }
 
-  const hasError = warnings.some(
-  warning => String(warning.severity).toLowerCase() === "error"
-);
+  const hasError =
+    hasSequentialError(warnings) ||
+    warnings.some(
+      warning =>
+        String(warning.severity).toLowerCase() ===
+        "error"
+    );
 
-  row.classList.add(hasError ? "row-error" : "row-warning");
-  row.title = warnings.map(warning => warning.message).join(" | ");
+  row.classList.add(
+    hasError ? "row-error" : "row-warning"
+  );
+
+  row.title = warnings
+    .map(warning => warning.message)
+    .join(" | ");
 }
 
 function showEmptyReview(message) {
@@ -486,8 +502,23 @@ function renderTimecard() {
         );
       }
 
-      applyWarningsToRow(row, pageNumber, dayIndex);
-      body.append(row);
+      applyWarningsToRow(
+  row,
+  pageNumber,
+  dayIndex
+);
+
+const hasUncertainty =
+  JSON.stringify(day).includes("?");
+
+if (
+  hasUncertainty &&
+  !row.classList.contains("row-error")
+) {
+  row.classList.add("row-warning");
+}
+
+body.append(row);
     });
   });
 
@@ -540,16 +571,24 @@ function renderPayroll() {
     const pageNumber = pageData.page ?? pageIndex + 1;
 const pageWarnings = warningsForPage(pageNumber);
 
-if (pageWarnings.length) {
+const hasUncertainty =
+  JSON.stringify(pageData).includes("?");
+
+if (pageWarnings.length || hasUncertainty) {
   block.classList.add(
     hasSequentialError(pageWarnings)
       ? "page-error"
       : "page-warning"
   );
 
-  block.title = pageWarnings
-    .map(warning => warning.message)
-    .join(" | ");
+  if (pageWarnings.length) {
+    block.title = pageWarnings
+      .map(warning => warning.message)
+      .join(" | ");
+  } else {
+    block.title =
+      "A página possui caracteres incertos.";
+  }
 }
 
     const heading = document.createElement("div");
