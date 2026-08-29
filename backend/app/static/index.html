@@ -4,14 +4,283 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Quick Filler</title>
   <style>
-    :root{font-family:Inter,Arial,sans-serif;color:#17223b;background:#f3f6fb}*{box-sizing:border-box}
-    body{margin:0}header{background:#173772;color:white;padding:18px 28px}main{padding:22px;max-width:1500px;margin:auto}
-    .upload,.panel{background:white;border:1px solid #d9e1ef;border-radius:10px;padding:16px;box-shadow:0 4px 18px #17377212}
-    button,select,input{padding:10px;border-radius:6px;border:1px solid #aebbd0}button{background:#173772;color:white;cursor:pointer}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.hidden{display:none}iframe{width:100%;height:72vh;border:0}
-    textarea{width:100%;height:60vh;font-family:monospace;font-size:13px;border:1px solid #aebbd0;border-radius:6px;padding:10px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.status{margin-left:10px;font-weight:600}.warning{color:#7a5700}
-    @media(max-width:900px){.grid{grid-template-columns:1fr}iframe{height:55vh}}
+    :root {
+  font-family: Inter, Arial, sans-serif;
+  color: #17223b;
+  background: #f4f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+header {
+  padding: 28px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #112a59, #1f4b99);
+  box-shadow: 0 4px 18px #10285830;
+}
+
+header strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+}
+
+main {
+  max-width: 1500px;
+  margin: auto;
+  padding: 28px 22px;
+}
+
+.upload,
+.panel {
+  background: #ffffff;
+  border: 1px solid #d9e1ef;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px #17377212;
+}
+
+.upload {
+  padding: 20px;
+}
+
+.upload form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+button,
+select,
+input {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #b8c5d8;
+  border-radius: 8px;
+  font: inherit;
+}
+
+input[type="file"] {
+  max-width: 320px;
+  background: #f9fbff;
+}
+
+select {
+  background: #ffffff;
+  color: #17223b;
+}
+
+button {
+  border: 1px solid #173772;
+  background: #173772;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+button:hover {
+  background: #102a5c;
+  transform: translateY(-1px);
+}
+
+.status {
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #173772;
+  background: #eaf1ff;
+}
+
+.status:empty {
+  display: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
+.warnings {
+  display: block;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid #e3bd55;
+  border-radius: 8px;
+  color: #624700;
+  background: #fff8df;
+}
+
+.warnings.hidden {
+  display: none;
+}
+
+.warnings ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+iframe {
+  width: 100%;
+  height: 72vh;
+  border: 1px solid #d9e1ef;
+  border-radius: 8px;
+}
+
+.review {
+  min-width: 0;
+}
+
+.review-empty {
+  padding: 28px;
+  border: 1px dashed #b8c5d8;
+  border-radius: 8px;
+  color: #5f6f86;
+  text-align: center;
+  background: #f8faff;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #d9e1ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.review-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.review-table th,
+.review-table td {
+  padding: 8px;
+  border-right: 1px solid #d9e1ef;
+  border-bottom: 1px solid #d9e1ef;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.review-table th:last-child,
+.review-table td:last-child {
+  border-right: 0;
+}
+
+.review-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.review-table th {
+  color: #ffffff;
+  background: #173772;
+  white-space: nowrap;
+}
+
+.review-table input {
+  width: 100%;
+  min-width: 90px;
+  padding: 8px;
+  border: 1px solid #b8c5d8;
+  border-radius: 6px;
+  color: #17233a;
+  background: #ffffff;
+}
+
+.review-table input:focus {
+  border-color: #3768b7;
+  outline: 2px solid #dce9ff;
+}
+
+.review-table tr.row-warning td {
+  background: #fff3cd;
+}
+
+.review-table tr.row-error td {
+  background: #f8d7da;
+}
+
+.review-table tr.row-error td:first-child {
+  border-left: 4px solid #dc3545;
+}
+
+.page-block {
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.page-block + .page-block {
+  margin-top: 20px;
+}
+
+.page-block.page-warning {
+  border-color: #e3bd55;
+  background: #fff3cd;
+}
+
+.page-block.page-error {
+  border-color: #dc3545;
+  border-left: 4px solid #dc3545;
+  background: #f8d7da;
+}
+
+.page-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 10px;
+  color: #173772;
+}
+
+.page-heading span {
+  font-weight: 700;
+}
+
+.table-title {
+  margin: 14px 0 8px;
+  font-size: 0.95rem;
+  color: #34445f;
+}
+
+@media (max-width: 900px) {
+  main {
+    padding: 18px 14px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  iframe {
+    height: 55vh;
+  }
+}
   </style>
 </head>
 <body><header><strong>Quick Filler</strong> - revisão de transcrições</header><main>
@@ -19,18 +288,539 @@
     <select name="tipo"><option value="cartao-ponto">Cartão de ponto</option><option value="holerite">Holerite</option></select>
     <button>Processar PDF</button><span id="status" class="status"></span></form></section>
   <section id="workspace" class="grid hidden"><div class="panel"><h2>Documento</h2><iframe id="pdf"></iframe></div>
-    <div class="panel"><h2>Transcrição editável</h2><p class="warning">Use <code>?</code> quando um caractere não puder ser confirmado.</p>
-      <textarea id="editor" spellcheck="false"></textarea><div class="actions"><button id="save">Salvar correções</button>
+    <div class="panel"><h2>Transcrição editável</h2><p class="warning">Use <code>?</code> quando um caractere não puder ser confirmado.</p> 
+      <div id="warnings" class="warnings hidden"></div>
+      <div id="review" class="review">
+  <div class="review-empty">
+    Envie um PDF para iniciar a revisão.
+  </div>
+</div><div class="actions"><button id="save">Salvar correções</button>
       <button data-format="xlsx">Baixar XLSX</button><button data-format="csv">Baixar CSV</button><button data-format="json">Baixar JSON</button></div></div></section>
 <script>
-let id=null;const status=document.querySelector('#status'), editor=document.querySelector('#editor');
-document.querySelector('#form').addEventListener('submit',async e=>{e.preventDefault();status.textContent='Enviando...';
- const response=await fetch('/api/transcricoes',{method:'POST',body:new FormData(e.target)});if(!response.ok){status.textContent=await response.text();return}
- id=(await response.json()).id;status.textContent='Processando...';poll();});
-async function poll(){const data=await (await fetch(`/api/transcricoes/${id}`)).json();status.textContent=data.status;
- if(data.status==='processando'){setTimeout(poll,1000);return}if(data.status==='erro'){status.textContent=data.erro;return}
- editor.value=JSON.stringify(data.value,null,2);document.querySelector('#pdf').src=`/api/transcricoes/${id}/pdf`;
- document.querySelector('#workspace').classList.remove('hidden');}
-document.querySelector('#save').addEventListener('click',async()=>{try{const value=JSON.parse(editor.value);const response=await fetch(`/api/transcricoes/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value})});if(!response.ok)throw Error(await response.text());status.textContent='Correções salvas';}catch(error){status.textContent='JSON inválido: '+error.message;}});
-document.querySelectorAll('[data-format]').forEach(button=>button.addEventListener('click',()=>{window.location=`/api/transcricoes/${id}/planilha?formato=${button.dataset.format}`}));
-</script></main></body></html>
+let id = null;
+let currentValue = null;
+let currentType = null;
+let currentWarnings = [];
+
+const status = document.querySelector("#status");
+const review = document.querySelector("#review");
+const warningBox = document.querySelector("#warnings");
+const workspace = document.querySelector("#workspace");
+const pdf = document.querySelector("#pdf");
+
+function renderWarnings(warnings) {
+  warningBox.replaceChildren();
+
+  if (!warnings?.length) {
+    warningBox.classList.add("hidden");
+    return;
+  }
+
+  const title = document.createElement("strong");
+  title.textContent = "Revisão recomendada";
+
+  const list = document.createElement("ul");
+
+  for (const warning of warnings) {
+    const item = document.createElement("li");
+    const location = warning.row == null
+      ? `Página ${warning.page}`
+      : `Página ${warning.page}, linha ${warning.row + 1}`;
+
+    item.textContent = `${location}: ${warning.message}`;
+    list.append(item);
+  }
+
+  warningBox.append(title, list);
+  warningBox.classList.remove("hidden");
+}
+
+function createInput(value, data = {}) {
+  const input = document.createElement("input");
+  input.className = "review-input";
+  input.value = value ?? "";
+
+  for (const [key, item] of Object.entries(data)) {
+    input.dataset[key] = item;
+  }
+
+  return input;
+}
+
+function appendTextCell(row, text) {
+  const cell = document.createElement("td");
+  cell.textContent = text ?? "";
+  row.append(cell);
+}
+
+function appendInputCell(row, value, data) {
+  const cell = document.createElement("td");
+  cell.append(createInput(value, data));
+  row.append(cell);
+}
+
+function createTable(headers) {
+  const table = document.createElement("table");
+  table.className = "review-table";
+
+  const head = document.createElement("thead");
+  const row = document.createElement("tr");
+
+  for (const header of headers) {
+    const cell = document.createElement("th");
+    cell.textContent = header;
+    row.append(cell);
+  }
+
+  head.append(row);
+  table.append(head, document.createElement("tbody"));
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "table-wrap";
+  wrapper.append(table);
+
+  return {wrapper, table, body: table.querySelector("tbody")};
+}
+
+function warningsForRow(pageNumber, rowIndex) {
+  return currentWarnings.filter(
+    warning =>
+      Number(warning.page) === Number(pageNumber) &&
+      warning.row != null &&
+      Number(warning.row) === Number(rowIndex)
+  );
+}
+
+function warningsForPage(pageNumber) {
+  return currentWarnings.filter(
+    warning => Number(warning.page) === Number(pageNumber)
+  );
+}
+
+function hasSequentialError(warnings) {
+  return warnings.some(warning =>
+    warning.code === "NON_SEQUENTIAL_DATE" ||
+    warning.code === "NON_SEQUENTIAL_MONTH"
+  );
+}
+
+function applyWarningsToRow(
+  row,
+  pageNumber,
+  rowIndex
+) {
+  const warnings = warningsForRow(
+    pageNumber,
+    rowIndex
+  );
+
+  if (!warnings.length) {
+    return;
+  }
+
+  const hasError =
+    hasSequentialError(warnings) ||
+    warnings.some(
+      warning =>
+        String(warning.severity).toLowerCase() ===
+        "error"
+    );
+
+  row.classList.add(
+    hasError ? "row-error" : "row-warning"
+  );
+
+  row.title = warnings
+    .map(warning => warning.message)
+    .join(" | ");
+}
+
+function showEmptyReview(message) {
+  review.replaceChildren();
+
+  const empty = document.createElement("div");
+  empty.className = "review-empty";
+  empty.textContent = message;
+
+  review.append(empty);
+}
+
+function renderTimecard() {
+  review.replaceChildren();
+
+  const pages = currentValue?.pages ?? [];
+  const days = pages.flatMap(page => page.days ?? []);
+
+  if (!days.length) {
+    showEmptyReview("Nenhum dia foi extraído.");
+    return;
+  }
+
+  const maxPunches = Math.max(
+    0,
+    ...days.map(day => (day.punches ?? []).length)
+  );
+
+  const headers = ["Pág.", "Data"];
+
+  for (let index = 0; index < maxPunches; index += 1) {
+    const pair = Math.floor(index / 2) + 1;
+    headers.push(index % 2 === 0 ? `Entrada ${pair}` : `Saída ${pair}`);
+  }
+
+  const {wrapper, body} = createTable(headers);
+
+  pages.forEach((page, pageIndex) => {
+    const pageNumber = page.page ?? pageIndex + 1;
+
+    (page.days ?? []).forEach((day, dayIndex) => {
+      const row = document.createElement("tr");
+      row.className = "timecard-row";
+      row.dataset.page = pageIndex;
+      row.dataset.day = dayIndex;
+
+      appendTextCell(row, pageNumber);
+
+      appendInputCell(row, day.date_raw, {
+        kind: "date",
+        page: pageIndex,
+        day: dayIndex,
+      });
+
+      for (let punchIndex = 0; punchIndex < maxPunches; punchIndex += 1) {
+        const punch = (day.punches ?? [])[punchIndex];
+
+        appendInputCell(
+          row,
+          punch?.time_hhmm ?? punch?.time_raw ?? "",
+          {
+            kind: "punch",
+            page: pageIndex,
+            day: dayIndex,
+            punch: punchIndex,
+          }
+        );
+      }
+
+      applyWarningsToRow(
+  row,
+  pageNumber,
+  dayIndex
+);
+
+const hasUncertainty =
+  JSON.stringify(day).includes("?");
+
+if (
+  hasUncertainty &&
+  !row.classList.contains("row-error")
+) {
+  row.classList.add("row-warning");
+}
+
+body.append(row);
+    });
+  });
+
+  review.append(wrapper);
+}
+
+function renderPayrollTable(page, pageIndex, kind, title, headers, items) {
+  const heading = document.createElement("h4");
+  heading.className = "table-title";
+  heading.textContent = title;
+
+  const {wrapper, body} = createTable(headers);
+
+  items.forEach((item, itemIndex) => {
+    const row = document.createElement("tr");
+
+    const properties = kind === "field"
+      ? ["code", "label", "reference", "value"]
+      : ["label", "value"];
+
+    for (const property of properties) {
+      appendInputCell(row, item[property], {
+        kind,
+        page: pageIndex,
+        item: itemIndex,
+        property,
+      });
+    }
+
+    body.append(row);
+  });
+
+  page.append(heading, wrapper);
+}
+
+function renderPayroll() {
+  review.replaceChildren();
+
+  const pages = currentValue?.pages ?? [];
+
+  if (!pages.length) {
+    showEmptyReview("Nenhuma página foi extraída.");
+    return;
+  }
+
+  pages.forEach((pageData, pageIndex) => {
+    const block = document.createElement("section");
+    block.className = "page-block";
+
+    const pageNumber = pageData.page ?? pageIndex + 1;
+const pageWarnings = warningsForPage(pageNumber);
+
+const hasUncertainty =
+  JSON.stringify(pageData).includes("?");
+
+if (pageWarnings.length || hasUncertainty) {
+  block.classList.add(
+    hasSequentialError(pageWarnings)
+      ? "page-error"
+      : "page-warning"
+  );
+
+  if (pageWarnings.length) {
+    block.title = pageWarnings
+      .map(warning => warning.message)
+      .join(" | ");
+  } else {
+    block.title =
+      "A página possui caracteres incertos.";
+  }
+}
+
+    const heading = document.createElement("div");
+    heading.className = "page-heading";
+
+    const pageLabel = document.createElement("span");
+    pageLabel.textContent = `Página ${pageData.page ?? pageIndex + 1}`;
+
+    const monthLabel = document.createElement("label");
+    monthLabel.textContent = "Mês ";
+    monthLabel.append(
+      createInput(pageData.month, {
+        kind: "page",
+        page: pageIndex,
+        property: "month",
+      })
+    );
+
+    const yearLabel = document.createElement("label");
+    yearLabel.textContent = "Ano ";
+    yearLabel.append(
+      createInput(pageData.year, {
+        kind: "page",
+        page: pageIndex,
+        property: "year",
+      })
+    );
+
+    heading.append(pageLabel, monthLabel, yearLabel);
+    block.append(heading);
+
+    renderPayrollTable(
+      block,
+      pageIndex,
+      "field",
+      "Verbas",
+      ["Código", "Descrição", "Referência", "Valor"],
+      pageData.fields ?? []
+    );
+
+    renderPayrollTable(
+      block,
+      pageIndex,
+      "base",
+      "Bases e totais",
+      ["Descrição", "Valor"],
+      pageData.bases ?? []
+    );
+
+    review.append(block);
+  });
+}
+
+function renderReview() {
+  if (currentType === "cartao-ponto") {
+    renderTimecard();
+    return;
+  }
+
+  if (currentType === "holerite") {
+    renderPayroll();
+    return;
+  }
+
+  showEmptyReview("Tipo de documento não reconhecido.");
+}
+
+function collectEdits() {
+  review.querySelectorAll(".review-input").forEach(input => {
+    const pageIndex = Number(input.dataset.page);
+    const page = currentValue.pages[pageIndex];
+    const kind = input.dataset.kind;
+
+    if (kind === "date") {
+      const dayIndex = Number(input.dataset.day);
+      page.days[dayIndex].date_raw = input.value.trim();
+    }
+
+    if (kind === "page") {
+      page[input.dataset.property] = input.value.trim();
+    }
+
+    if (kind === "field" || kind === "base") {
+      const collection = kind === "field" ? page.fields : page.bases;
+      const itemIndex = Number(input.dataset.item);
+
+      collection[itemIndex][input.dataset.property] = input.value.trim();
+    }
+  });
+
+  review.querySelectorAll(".timecard-row").forEach(row => {
+    const pageIndex = Number(row.dataset.page);
+    const dayIndex = Number(row.dataset.day);
+
+    const times = [...row.querySelectorAll('[data-kind="punch"]')]
+      .map(input => input.value.trim())
+      .filter(Boolean);
+
+    currentValue.pages[pageIndex].days[dayIndex].punches =
+      times.map((time, index) => ({
+        kind: index % 2 === 0 ? "IN" : "OUT",
+        time_raw: time,
+        time_hhmm: time,
+      }));
+  });
+
+  return currentValue;
+}
+
+document.querySelector("#form").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  workspace.classList.add("hidden");
+  warningBox.classList.add("hidden");
+  pdf.removeAttribute("src");
+  currentValue = null;
+  currentType = null;
+  currentWarnings = [];
+  status.textContent = "Enviando...";
+
+  try {
+    const response = await fetch("/api/transcricoes", {
+      method: "POST",
+      body: new FormData(event.target),
+    });
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    id = (await response.json()).id;
+    status.textContent = "Processando...";
+    poll();
+  } catch (error) {
+    status.textContent = `Falha no envio: ${error.message}`;
+  }
+});
+
+async function poll() {
+  try {
+    const response = await fetch(`/api/transcricoes/${id}`);
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    const data = await response.json();
+
+    if (data.status === "processando") {
+      status.textContent = "Processando...";
+      setTimeout(poll, 1000);
+      return;
+    }
+
+    if (data.status === "erro") {
+      status.textContent = data.erro;
+      return;
+    }
+
+    currentValue = data.value;
+    currentType = data.tipo;
+    currentWarnings = data.warnings ?? [];
+
+    renderWarnings(currentWarnings);
+    renderReview();
+
+    pdf.src = `/api/transcricoes/${id}/pdf`;
+    workspace.classList.remove("hidden");
+    status.textContent = "Revisão necessária";
+  } catch (error) {
+    status.textContent = `Falha ao consultar: ${error.message}`;
+  }
+}
+
+document.querySelector("#save").addEventListener("click", async () => {
+  if (!id || !currentValue) {
+    status.textContent = "Nenhuma transcrição disponível.";
+    return;
+  }
+
+  try {
+    const value = collectEdits();
+
+    const response = await fetch(`/api/transcricoes/${id}`, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({value}),
+    });
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    const data = await response.json();
+
+    currentValue = data.value;
+    currentWarnings = data.warnings ?? [];
+
+    renderWarnings(currentWarnings);
+renderReview();
+
+if (currentWarnings.length) {
+  const amount = currentWarnings.length;
+  const label = amount === 1 ? "aviso" : "avisos";
+
+  status.textContent =
+    `Correções salvas — ${amount} ${label} para revisar`;
+
+  warningBox.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
+} else {
+  status.textContent = "Correções salvas — nenhum aviso";
+}
+  } catch (error) {
+    status.textContent = `Não foi possível salvar: ${error.message}`;
+  }
+});
+
+document.querySelectorAll("[data-format]").forEach(button => {
+  button.addEventListener("click", () => {
+    if (!id || !currentValue) {
+      status.textContent = "Nenhuma transcrição disponível.";
+      return;
+    }
+
+    window.location =
+      `/api/transcricoes/${id}/planilha?formato=${button.dataset.format}`;
+  });
+});
+</script>
+</main>
+</body>
+</html>

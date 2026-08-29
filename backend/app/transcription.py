@@ -122,11 +122,43 @@ def _competence(rows: list[list[Word]]) -> tuple[str, str]:
         r"(0?[1-9]|1[0-2])\s*[/.-]\s*((?:19|20)\d{2})",
         re.IGNORECASE,
     )
+
+    named_month = re.compile(
+        r"\b("
+        r"janeiro|fevereiro|mar[cç]o|abril|maio|junho|"
+        r"julho|agosto|setembro|outubro|novembro|dezembro"
+        r")\s*/\s*((?:19|20)\d{2})",
+        re.IGNORECASE,
+    )
+
+    months = {
+        "janeiro": "01",
+        "fevereiro": "02",
+        "março": "03",
+        "marco": "03",
+        "abril": "04",
+        "maio": "05",
+        "junho": "06",
+        "julho": "07",
+        "agosto": "08",
+        "setembro": "09",
+        "outubro": "10",
+        "novembro": "11",
+        "dezembro": "12",
+    }
+
     for row in rows:
         text = row_text(row)
+
         match = labelled.search(text)
         if match:
             return match.group(2), f"{int(match.group(1)):02d}"
+
+        match = named_month.search(text)
+        if match:
+            month_name = match.group(1).lower().replace("ç", "c")
+            return match.group(2), months[month_name]
+
     return "", ""
 
 
@@ -229,6 +261,129 @@ def _summary_items(row: list[Word]) -> list[dict]:
             items.append({"label": label, "value": match.group(1)})
     return items
 
+def _parse_receipt_payroll(
+    rows: list[list[Word]],
+    width: float,
+) -> tuple[list[dict], list[dict]]:
+    """Extrai campos e totais do layout Recibo de Pagamento via OCR."""
+
+    fields: list[dict] = []
+    bases: list[dict] = []
+    seen_fields: set[tuple[str, str]] = set()
+
+    for row in rows:
+        text = row_text(row).lower()
+        values = _money_words(row)
+
+        if "otal de proventos" in text and values:
+            bases.append(
+                {
+                    "label": "Total Proventos",
+                    "value": values[0].text,
+                }
+            )
+
+        if "otal de descontos" in text and values:
+            bases.append(
+                {
+                    "label": "Total Descontos",
+                    "value": values[-1].text,
+                }
+            )
+
+        if "liquido a receber" in text and values:
+            bases.append(
+                {
+                    "label": "Valor Líquido",
+                    "value": values[0].text,
+                }
+            )
+
+        left_words = [
+            word for word in row
+            if word.x0 < width * 0.45
+        ]
+        right_words = [
+            word for word in row
+            if word.x0 >= width * 0.45
+        ]
+
+        for column_words in (left_words, right_words):
+            column_values = _money_words(column_words)
+
+            if len(column_values) != 1:
+                continue
+
+            value = column_values[0].text
+            label_words = [
+                word.text for word in column_words
+                if not MONEY_RE.match(word.text)
+            ]
+            label = " ".join(label_words).strip(" :-|")
+
+            blocked_labels = (
+                "descrição",
+                "qtde",
+                "valor",
+                "otal de",
+                "liquido",
+            )
+
+            if not label or any(
+                blocked in label.lower()
+                for blocked in blocked_labels
+            ):
+                continue
+
+            related_index = next(
+                (
+                    index
+                    for index, existing in enumerate(fields)
+                    if existing["value"] == value
+                    and (
+                        label == existing["label"][1:]
+                        or existing["label"] == label[1:]
+                    )
+                ),
+                None,
+            )
+
+            if related_index is not None:
+                existing = fields[related_index]
+
+                if len(label) < len(existing["label"]):
+                    old_key = (
+                        existing["label"],
+                        existing["value"],
+                    )
+                    seen_fields.discard(old_key)
+
+                    fields[related_index] = {
+                        "code": "",
+                        "label": label,
+                        "reference": "",
+                        "value": value,
+                    }
+                    seen_fields.add((label, value))
+
+                continue
+
+            key = (label, value)
+
+            if key in seen_fields:
+                continue
+
+            fields.append(
+                {
+                    "code": "",
+                    "label": label,
+                    "reference": "",
+                    "value": value,
+                }
+            )
+            seen_fields.add(key)
+
+    return fields, _dedupe_bases(bases)
 
 def _parse_generic_section(rows: list[list[Word]], width: float) -> tuple[list[dict], list[dict]]:
     """Lê uma tabela simples preservando inclusive referências textuais."""
@@ -314,32 +469,72 @@ def _dedupe_bases(items: list[dict]) -> list[dict]:
 def parse_payroll(path: str | Path) -> dict:
     pages: list[dict] = []
     doc = pymupdf.open(path)
+
     try:
         is_financial_statement = bool(doc) and "fichafinanceira" in re.sub(
             r"\s+", "", doc[0].get_text("text").lower()
         )
+
         for number, page in enumerate(doc, 1):
             words, _source = extract_page(page)
             rows = group_rows(words)
             year, month = _competence(rows)
             text = " ".join(row_text(row).lower() for row in rows[:30])
-            if is_financial_statement or "fichafinanceira" in text or "ficha financeira" in text:
-                # É o bônus ficha financeira; não forçamos no parser obrigatório.
+
+            if (
+                is_financial_statement
+                or "fichafinanceira" in text
+                or "ficha financeira" in text
+            ):
                 fields, bases, sections = [], [], []
                 year, month = "", ""
-            elif "demonstrativo" in text or any("cod." in row_text(r).lower() for r in rows):
+
+            elif (
+                "demonstrativo" in text
+                or any("cod." in row_text(row).lower() for row in rows)
+            ):
                 fields, bases = _parse_code_table(rows, page.rect.width)
-                sections = [{"payroll_type": "MENSAL", "fields": fields, "bases": bases}]
+                sections = [
+                    {
+                        "payroll_type": "MENSAL",
+                        "fields": fields,
+                        "bases": bases,
+                    }
+                ]
+
+            elif "recibo de pagamento" in text:
+                fields, bases = _parse_receipt_payroll(rows, page.rect.width)
+                sections = [
+                    {
+                        "payroll_type": "MENSAL",
+                        "fields": fields,
+                        "bases": bases,
+                    }
+                ]
+
             else:
-                fields, bases, sections = _parse_generic_payroll(rows, page.rect.width)
-                # Sem competência e quase sem verbas, o fallback não possui
-                # evidência suficiente. Uma página vazia é melhor que lixo.
+                fields, bases, sections = _parse_generic_payroll(
+                    rows,
+                    page.rect.width,
+                )
+
                 if not year and not month and len(fields) < 3:
                     fields, bases, sections = [], [], []
-            pages.append({"page": number, "year": year, "month": month,
-                          "fields": fields, "bases": bases, "sections": sections})
+
+            pages.append(
+                {
+                    "page": number,
+                    "year": year,
+                    "month": month,
+                    "fields": fields,
+                    "bases": bases,
+                    "sections": sections,
+                }
+            )
+
     finally:
         doc.close()
+
     return {"pages": pages}
 
 
@@ -363,6 +558,34 @@ def _punches(times: list[str]) -> list[dict]:
                        "time_raw": raw, "time_hhmm": normalized})
     return result
 
+def _order_time_words(
+    time_words: list[tuple[float, str]],
+    first_interval_x: float | None,
+) -> list[str]:
+    """Ordena horários conforme o layout identificado no cabeçalho."""
+
+    ordered = sorted(time_words, key=lambda item: item[0])
+
+    if first_interval_x is None:
+        return [value for _, value in ordered]
+
+    main_column_times = [
+        value for x0, value in ordered
+        if x0 < first_interval_x
+    ]
+    interval_times = [
+        value for x0, value in ordered
+        if x0 >= first_interval_x
+    ]
+
+    if len(main_column_times) >= 2:
+        return [
+            main_column_times[0],
+            *interval_times,
+            *main_column_times[1:],
+        ]
+
+    return [value for _, value in ordered]
 
 def parse_timecard(path: str | Path) -> dict:
     pages: list[dict] = []
@@ -379,6 +602,16 @@ def parse_timecard(path: str | Path) -> dict:
                 if w.x0 > data_left and any(marker in w.text.lower() for marker in ("ocorr", "qtde", "h.ext", "atraso"))
             ]
             data_right = min(stops) if stops else page.rect.width * 0.82
+            interval_starts = [
+                word.x0
+                for word in header_words
+                if "intervalo" in word.text.lower()
+            ]
+            first_interval_x = (
+                (min(starts) + min(interval_starts)) / 2
+                if starts and interval_starts
+                else None
+)
             days: list[dict] = []
             current: dict | None = None
             current_y: float | None = None
@@ -389,11 +622,15 @@ def parse_timecard(path: str | Path) -> dict:
                 has_weekday = bool(re.search(r"\b(?:DOM|SEG|TER|QUA|QUI|SEX|SAB)\b", text, re.I))
                 date_raw = full.group(1) if full and has_weekday else (day_week.group(1) if day_week else None)
                 row_y = min(word.y0 for word in row)
-                times = []
+
+                time_words: list[tuple[float, str]] = []
                 for word in row:
                     if not (data_left <= word.x0 <= data_right):
                         continue
-                    times.extend(match.group(1) for match in TIME_RE.finditer(word.text))
+                    for match in TIME_RE.finditer(word.text):
+                        time_words.append((word.x0, match.group(1)))
+
+                times = _order_time_words(time_words, first_interval_x)
                 if date_raw is not None:
                     current = {"date_raw": date_raw, "punches": _punches(times)}
                     days.append(current)
