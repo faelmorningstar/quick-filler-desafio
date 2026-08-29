@@ -1,58 +1,183 @@
 # Quick Filler
 
-Aplicação web para transcrição revisável de cartões de ponto e holerites.
+Aplicação web para transcrição revisável de cartões de ponto e holerites em PDF.
 
 ## Demonstração
 
-Aplicação publicada: https://quick-filler-desafio-aua5.onrender.com
+Aplicação publicada:
 
-## Sobre o Projeto
+https://quick-filler-desafio-aua5.onrender.com
 
-Quick Filler é uma aplicação web para extração, revisão e exportação de dados estruturados a partir de PDFs de holerites e cartões de ponto.
+A hospedagem gratuita pode levar alguns segundos para iniciar após um período
+sem acesso.
 
-O projeto foi desenvolvido como desafio técnico, com foco em leitura de PDFs, parsing estruturado, validação de dados e geração de planilhas.
+## Sobre o projeto
+
+Quick Filler realiza o ciclo completo de transformação de documentos
+trabalhistas em dados estruturados:
+
+```text
+enviar PDF → processar → revisar → corrigir → baixar
+```
+
+O projeto foi iniciado como um desafio técnico e continuou sendo desenvolvido
+como projeto de portfólio. O foco está em processamento de PDFs, OCR, parsing
+estruturado, validação conservadora, revisão humana e geração de planilhas.
+
+Um dado incerto não deve ser apresentado como confiável. Quando um caractere não
+pode ser confirmado, a aplicação preserva a incerteza com `?`. Quando nenhuma
+informação útil é recuperada, o processamento termina com uma mensagem de erro
+em vez de apresentar uma transcrição vazia como concluída.
 
 ## Funcionalidades
 
-- Upload de PDFs de holerite e cartão de ponto
-- Processamento de documentos com extração estruturada
-- Exibição dos dados em formato revisável
-- Exportação dos resultados em planilha
-- Interface e cabeçalhos das planilhas em português-BR
-- Testes automatizados para validar documentos reais
-- Deploy público da aplicação
+- Upload de PDFs com limite de 15 MB
+- Validação da assinatura do arquivo PDF
+- Seleção entre cartão de ponto e holerite
+- Processamento assíncrono com acompanhamento de status
+- Extração de texto nativo com PyMuPDF
+- OCR com Tesseract para páginas escaneadas
+- Interface de revisão em tabelas editáveis
+- PDF visível ao lado da transcrição
+- Correção individual de células
+- Avisos derivados após cada correção
+- Destaques amarelos para incertezas e outros problemas
+- Destaques vermelhos para datas ou meses não sequenciais
+- Exportação em XLSX, CSV e JSON
+- Downloads atualizados com as correções feitas na interface
+- Tratamento explícito de extrações totalmente vazias
+- API documentada e endpoint de saúde
+- Execução com Docker Compose
+- Testes automatizados com documentos reais selecionados
 
 ## Tecnologias
 
-- Python
+- Python 3.12
 - FastAPI
+- Uvicorn
 - PyMuPDF
+- Tesseract OCR
+- OpenCV
 - OpenPyXL
+- Pydantic
 - Pytest
-- HTML, CSS e JavaScript
+- HTML
+- CSS
+- JavaScript
 - Docker
+- Docker Compose
 - Render
 
-## Destaques Técnicos
+## Arquitetura
 
-- Extração de texto e coordenadas de PDFs
-- Separação entre holerites e cartões de ponto
-- Validação para evitar dados inventados
-- Preservação do contrato original da API em inglês
-- Testes com arquivos reais do desafio
-- Documentação do processo de desenvolvimento e decisões técnicas
+A aplicação utiliza um pipeline compartilhado para os dois tipos de documento.
+Upload, acompanhamento, revisão, correção e download são comuns; o que muda é o
+extrator e a estrutura da planilha.
 
-## Como executar localmente no Windows
+A API disponibiliza:
 
-Estes comandos devem ser executados em um ambiente local com Python instalado. No editor web do GitHub, é possível apenas editar arquivos e enviar commits.
+```text
+POST /api/transcricoes
+GET  /api/transcricoes/:id
+PUT  /api/transcricoes/:id
+GET  /api/transcricoes/:id/pdf
+GET  /api/transcricoes/:id/planilha
+GET  /healthz
+```
 
-Na raiz do projeto, instale as dependências:
+Os estados possíveis de processamento são:
+
+```text
+processando
+concluido
+erro
+```
+
+## Como executar com Docker
+
+Na raiz do projeto:
+
+```bash
+docker compose up --build
+```
+
+Acesse:
+
+```text
+http://localhost:8000
+```
+
+Teste a saúde da aplicação:
+
+```bash
+curl http://localhost:8000/healthz
+```
+
+Para encerrar:
+
+```bash
+docker compose down
+```
+
+## Desenvolvimento local
+
+Em Linux ou Codespaces:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --app-dir backend
+```
+
+No Windows:
 
 ```powershell
+python -m venv .venv
+.venv\Scripts\activate
 python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --app-dir backend
+```
+
+## Testes
+
+Execute:
+
+```bash
+python -m pytest -q
+```
+
+Estado atual da suíte:
+
+```text
+58 passed, 2 skipped
+```
+
+Os testes cobrem parsers, normalização, documentos reais selecionados, avisos,
+extrações vazias, exportações e estilos das planilhas.
+
+## Documentação técnica
+
+- [`SOLUCAO.md`](SOLUCAO.md): arquitetura, execução, segurança, limitações e
+  decisões técnicas.
+- [`PROCESSO.md`](PROCESSO.md): ferramentas utilizadas, erros identificados,
+  decisões tomadas e avaliação crítica do desenvolvimento.
+
+## Limitações conhecidas
+
+- A qualidade da extração varia entre layouts.
+- O `time-card-04` ainda não fornece dados suficientes para uma transcrição
+  confiável e termina com erro legível.
+- Alguns layouts de holerite não possuem gabarito visual completo.
+- O armazenamento dos jobs é local e em memória.
+- Ainda não existe limpeza automática dos arquivos temporários por TTL.
+- Rastreabilidade visual e detecção automática do tipo não foram implementadas.
+- A versão publicada pode levar alguns segundos para iniciar no plano gratuito.
 
 ## Status
 
-Projeto entregue como desafio técnico e mantido em evolução para portfólio.
+O ciclo principal está funcional para os dois tipos de documento, incluindo
+revisão por células, correção, avisos e exportação.
 
-A versão atual valida o fluxo principal com documentos reais selecionados. Melhorias futuras incluem ampliar a cobertura para mais layouts, fortalecer o parser e evoluir a interface de revisão.
+O projeto continua evoluindo como portfólio, com prioridade para ampliar a
+cobertura de layouts, fortalecer o OCR e melhorar a operação em produção.
